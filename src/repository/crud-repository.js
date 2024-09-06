@@ -1,3 +1,5 @@
+import mongoose from 'mongoose';
+
 class CrudRepository {
     constructor(model) {
         this.model = model;
@@ -33,7 +35,7 @@ class CrudRepository {
         }
     }
 
-    async getAll(id) {
+    async getAll() {
         try {
             const result = await this.model.find({});
             return result;
@@ -45,14 +47,13 @@ class CrudRepository {
 
     async update(id, data) {
         try {
-            const result = await this.model.findByIdAndUpdate(id, data, {new: true});
+            const result = await this.model.findByIdAndUpdate(id, data, { new: true });
             return result;
-        } catch(error) {
+        } catch (error) {
             console.log("Something went wrong in crud repo");
             throw error;
         }
     }
-
 }
 
 export default CrudRepository;
