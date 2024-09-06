@@ -1,33 +1,44 @@
-import { TweetRepository, HashtagRepository }from '../repository/index.js'
+import { TweetRepository, HashtagRepository } from '../repository/index.js';
 
 class TweetService {
     constructor() {
         this.tweetRepository = new TweetRepository();
-        this.hashtagRepository= new HashtagRepository();
+        this.hashtagRepository = new HashtagRepository();
     }
 
     async create(data) {
         const content = data.content;
-        const tags = content.match(/#[a-zA-Z0-9_]+/g).map((tag) => tag.substring(1));; // this regex extracts hashtags
-        const tweet = await this.tweetRepository.create(data);
-        let alreadyPresentTags= await this.hashtagRepository.findByName(tags);
-        alreadyPresentTags=alreadyPresentTags.map(tags => tags.title);
-        let newTags= tags.filter(tag => !alreadyPresentTags.includes(tag));
-        newTags = newTags.map(tag =>{
-            return {title:tag, tweets:[tweet.id]}
-        });
+        const tags = content.match(/#[a-zA-Z0-9_]+/g)
+                    .map(tag => tag.substring(1).toLowerCase()); // extract hashtags
 
+        const tweet = await this.tweetRepository.create(data);
+
+        // Get existing tags from the repository
+        let alreadyPresentTags = await this.hashtagRepository.findByName(tags);
+
+        // Extract the titles of the existing tags
+        const existingTagTitles = alreadyPresentTags.map(tag => tag.title);
+
+        // Identify the new tags (those not already present)
+        let newTags = tags.filter(tag => !existingTagTitles.includes(tag));
+        newTags = newTags.map(tag => ({
+            title: tag,
+            tweets: [tweet.id]
+        }));
+
+        // Bulk create new tags
         await this.hashtagRepository.bulkCreate(newTags);
-        alreadyPresentTags.forEach((tag) =>{
-            tag.tweets.push(tweet.id);
-            tag.save();
-        });
+
+        // Update existing tags with the new tweet id
+        for (let tag of alreadyPresentTags) {
+            if (!tag.tweets.includes(tweet.id)) {
+                tag.tweets.push(tweet.id); // Ensure no duplicates
+                await tag.save(); // Save the updated tag
+            }
+        }
+
         return tweet;
     }
 }
 
 export default TweetService;
-
-/*
-    this is my #first #tweet . I am really #excited
-*/
